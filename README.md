@@ -9,7 +9,16 @@ For each NTA, we can derive:
 - number of other NTAs reachable via single seat subway ride (no transfers)
 - number of other NTAs reachable via single transfer subway ride
 
-The latter two use a graph based analysis, which could have other interesting applications in this space.
+Graphs analysis:
+
+The latter two results use a graph based analysis, which could have other interesting applications in this space. Here is how it works.
+
+- For each neighborhood N, we have 2 nodes: one representing that neighborhood as the origin of a trip (Ns), and another representing it as a destination (Nd).
+- Each line is condensed into a single node L.
+- For each line L that has a stop in neighborhood N, we have a 0-cost edge from Ns -> L and another 0-cost edge from L -> Nd.
+- For a single-seat ride, we can use the graph as-is and see how many Nd's are reachable from a particular Ns.
+- For a single-transfer ride, we add 1-cost bidirectional edges between any two lines that share a station or a station complex. Then, we take all Nd's reachable from a particular Ns with paths with <=1 cost.
+- The same setup can be used for N-transfer rides of any N, but you can get practically anywhere from anywhere with two transfers so for N>1 it's not an interesting visualization.
 
 Notes:
 
