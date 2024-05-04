@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NYC Subway Accessibility, Convenience, and Redundancy by Neighborhood</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js'></script>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -33,6 +34,11 @@
 </head>
 
 <body>
+    <h1>NYC Subway Visualizations - Stations, Services, Convenience by Neighborhood</h1>
+    <p>Select a Category: <select id="category" onchange="handleChange(this)"></select></p>
+    <p>Hover: Neighborhoods Reachable w/ Single-seat Ride</p>
+    <p><a href="https://github.com/yangdanny97/nyc-subway-vis">View Code Here</a></p>
+    <hr />
     <div id="container">
         <svg id="vis"></svg>
     </div>
@@ -93,6 +99,17 @@
         const SCALES = {}
         var category = CATEGORIES.REACHABLE_NEIGHBORHOODS_ONE_TRANSFER;
         var focused = null;
+        var handleChange;
+
+        const dropdown = document.getElementById("category");
+        Object.values(CATEGORIES).forEach(c => {
+            const option = document.createElement("option");
+            option.text = LABELS[c];
+            option.value = c;
+            dropdown.add(option);
+        });
+        dropdown.value = category;
+
         function draw(lines, stations, neighborhoods, data, mapping) {
             const projection = d3.geoMercator();
             const path = d3.geoPath().projection(projection);
@@ -152,7 +169,15 @@
                 return mapping[focused].stations.has(d.id);
             }
 
+            const legend = svg.append('g').attr('transform', `translate(10,25)`);
+
             function update() {
+                legend.call(d3.legendColor()
+                    .scale(SCALES[KEYS[category]])
+                    .orient('horizontal')
+                    .shapeWidth(50)
+                    .labelFormat(d3.format(".0f"))
+                    .title(LABELS[category]));
                 // neighborhoods
                 layer1.selectAll("path")
                     .data(neighborhoods.features, d => d.properties.ntaname)
@@ -250,6 +275,10 @@
                     );
             }
             update();
+            handleChange = select => {
+                category = select.value;
+                update();
+            }
         }
 
         async function onload() {
