@@ -120,7 +120,7 @@
             Object.values(KEYS).forEach(k => {
                 SCALES[k] = d3.scaleSequential()
                     .domain(d3.extent(data, d => d[k].size))
-                    .interpolator(d3.interpolateCividis);
+                    .interpolator(d3.interpolateMagma);
             });
 
             const layer1 = svg.append("g");
