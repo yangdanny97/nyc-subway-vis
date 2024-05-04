@@ -13,7 +13,7 @@
 
         #vis {
             width: 100%;
-            height: 80vh;
+            height: 90vh;
         }
 
         #container {
@@ -54,10 +54,10 @@
             REACHABLE_NEIGHBORHOODS_ONE_TRANSFER: "REACHABLE_NEIGHBORHOODS_ONE_TRANSFER",
         };
         const LABELS = {
-            NUMBER_OF_STATIONS: "Number of Stations",
-            NUMBER_OF_SERVICES: "Number of Services",
-            REACHABLE_NEIGHBORHOODS_SINGLE_SEAT: "Number of Neighborhoods Reachable on Single-seat Ride",
-            REACHABLE_NEIGHBORHOODS_ONE_TRANSFER: "Number of Neighborhoods Reachable with One Transfer",
+            NUMBER_OF_STATIONS: "Stations in Neighborhood",
+            NUMBER_OF_SERVICES: "Services in Neighborhood",
+            REACHABLE_NEIGHBORHOODS_SINGLE_SEAT: "Neighborhoods Reachable w/ Single-seat Ride",
+            REACHABLE_NEIGHBORHOODS_ONE_TRANSFER: "Neighborhoods Reachable w/ One Transfer",
         };
         const KEYS = {
             NUMBER_OF_STATIONS: "stations",
@@ -65,84 +65,144 @@
             REACHABLE_NEIGHBORHOODS_SINGLE_SEAT: "single_seat",
             REACHABLE_NEIGHBORHOODS_ONE_TRANSFER: "one_transfer",
         };
+        const COLORS = {
+            A: "#0039a6",
+            C: "#0039a6",
+            E: "#0039a6",
+            B: "#ff6319",
+            D: "#ff6319",
+            F: "#ff6319",
+            M: "#ff6319",
+            G: "#6cbe45",
+            L: "#a7a9ac",
+            J: "#996633",
+            Z: "#996633",
+            N: "#fccc0a",
+            Q: "#fccc0a",
+            R: "#fccc0a",
+            W: "#fccc0a",
+            "1": "#ee352e",
+            "2": "#ee352e",
+            "3": "#ee352e",
+            "4": "#00933c",
+            "5": "#00933c",
+            "6": "#00933c",
+            "7": "#b933ad",
+            S: "#808183"
+        }
+        const SCALES = {}
         var category = CATEGORIES.REACHABLE_NEIGHBORHOODS_ONE_TRANSFER;
-        var selected = null;
+        var focused = null;
         function draw(lines, stations, neighborhoods, data, mapping) {
             const projection = d3.geoMercator();
             const path = d3.geoPath().projection(projection);
             const padding = 20;
             projection.fitExtent([[padding, padding], [width - padding, height - padding]], neighborhoods);
 
-            const station_scale = d3.scaleLinear().domain(d3.extent(data, d => d.stations.length));
-            const service_scale = d3.scaleLinear().domain(d3.extent(data, d => d.services.length));
-            const single_seat_scale = d3.scaleLinear().domain(d3.extent(data, d => d.single_seat.length));
-            const one_transfer_scale = d3.scaleLinear().domain(d3.extent(data, d => d.one_transfer.length));
+            Object.values(KEYS).forEach(k => {
+                SCALES[k] = d3.scaleSequential()
+                    .domain(d3.extent(data, d => d[k].size))
+                    .interpolator(d3.interpolateCividis);
+            });
 
             const layer1 = svg.append("g");
             const layer2 = svg.append("g");
             const layer3 = svg.append("g");
             const layer4 = svg.append("g");
+            const layer5 = svg.append("g");
 
             function highlightNeighborhood(d) {
-                if (selected == null || mapping[selected] == null || mapping[d.properties.ntaname] == null) {
+                if (focused == null) {
                     return false;
                 }
-                if (d.properties.ntaname === selected) {
+                if (d.properties.ntaname === focused) {
                     return true;
-                }
-                if (category === CATEGORIES.REACHABLE_NEIGHBORHOODS_ONE_TRANSFER) {
-                    return mapping[d.properties.ntaname].one_transfer.has(selected);
-                }
-                if (category === CATEGORIES.REACHABLE_NEIGHBORHOODS_SINGLE_SEAT) {
-                    return mapping[d.properties.ntaname].single_seat.has(selected);
                 }
                 return false;
             }
 
-            function highlightLine(d) {
-                if (selected == null || mapping[selected] == null) {
+            function highlightOverlay(d) {
+                if (focused == null) {
                     return false;
                 }
-                if (d.properties.name == "S") {
-                    return false;
-                }
-                if (mapping[selected].services.has(d.properties.rt_symbol)) {
+                if (d.properties.ntaname === focused) {
                     return true;
                 }
-                return d.properties.name.split("-").filter(n => mapping[selected].services.has(n)).length > 0;
+                if (mapping[focused] == null) {
+                    return false;
+                }
+                return mapping[focused].single_seat.has(d.properties.ntaname);
+            }
+
+            function highlightLine(d) {
+                return false;
+                // if (focused == null || mapping[focused] == null) {
+                //     return false;
+                // }
+                // if (d.properties.rt_symbol == "S") {
+                //     return false;
+                // }
+                // return mapping[focused].services.has(d.properties.rt_symbol) // || d.properties.name.split("-").filter(n => mapping[focused].services.has(n)).length > 0;
             }
 
             function highlightStation(d) {
-                if (selected == null || mapping[selected] == null) {
+                if (focused == null || mapping[focused] == null) {
                     return false;
                 }
-                return mapping[selected].stations.has(d.id);
+                return mapping[focused].stations.has(d.id);
             }
 
             function update() {
                 // neighborhoods
-
                 layer1.selectAll("path")
                     .data(neighborhoods.features, d => d.properties.ntaname)
                     .join(enter => enter.append("path")
                         .attr("d", path)
-                        .attr("fill", "silver")
-                        .attr("stroke", "black")
-                        .attr("stroke-width", d => highlightNeighborhood(d) ? 1 : 0.5),
-                        update => update.attr("fill", "silver"));
+                        .attr("fill", d => {
+                            const key = KEYS[category];
+                            const data = mapping[d.properties.ntaname];
+                            if (data == null) {
+                                return "silver";
+                            }
+                            return SCALES[key](data[key].size);
+                        })
+                        .attr("stroke", "white")
+                        .attr("stroke-width", d => highlightNeighborhood(d) ? 1.5 : 0),
+                        update => update.attr("stroke-width", d => highlightNeighborhood(d) ? 1.5 : 0)
+                            .attr("fill", d => {
+                                const key = KEYS[category];
+                                const data = mapping[d.properties.ntaname];
+                                if (data == null) {
+                                    return "silver";
+                                }
+                                return SCALES[key](data[key].size);
+                            }));
+
+                // colored overlay
+                layer2.selectAll("path")
+                    .data(neighborhoods.features, d => d.properties.ntaname)
+                    .join(enter => enter.append("path")
+                        .attr("d", path)
+                        .attr("fill", "red")
+                        .attr("stroke", "white")
+                        .attr("stroke-width", d => highlightNeighborhood(d) ? 1.5 : 0)
+                        .style("opacity", d => highlightOverlay(d) ? 0.5 : 0),
+                        update => update.style("opacity", d => highlightOverlay(d) ? 0.5 : 0)
+                            .attr("stroke-width", d => highlightNeighborhood(d) ? 1.5 : 0)
+                    );
 
                 // draw subway lines
-                layer2.selectAll("path")
+                layer3.selectAll("path")
                     .data(lines.features, d => d.name)
                     .join(enter => enter.append("path")
                         .attr("d", path)
                         .attr("fill", "none")
-                        .attr("stroke", d => highlightLine(d) ? "black" : "gray")
-                        .attr("stroke-width", d => highlightLine(d) ? 1 : 0.5),
-                        update => update.attr("stroke", d => highlightLine(d) ? "black" : "gray"));
+                        .attr("stroke", d => highlightLine(d) ? COLORS[d.properties.rt_symbol] : "gray")
+                        .attr("stroke-width", d => highlightLine(d) ? 2 : 0.5),
+                        update => update.attr("stroke", d => highlightLine(d) ? COLORS[d.properties.rt_symbol] : "gray"));
 
                 // draw subway stations
-                layer3.selectAll("circle")
+                layer4.selectAll("circle")
                     .data(stations, d => d.id)
                     .join(enter => enter.append("circle")
                         .attr("cx", d => projection(d.coord)[0])
@@ -157,7 +217,7 @@
                     );
 
                 // draw invisible map for hover
-                layer4.selectAll("path")
+                layer5.selectAll("path")
                     .data(neighborhoods.features, d => d.properties.ntaname)
                     .join(enter => enter.append("path")
                         .attr("d", path)
@@ -166,22 +226,27 @@
                         .attr("stroke-width", 0)
                         .style("opacity", 0)
                         .on("mouseover", (_, d) => {
-                            selected = d.properties.ntaname;
-                            tooltip.html("Test")
-                                .style("left", (event.pageX + 10) + "px")
+                            focused = d.properties.ntaname;
+                            const tooltip_data = Object.values(CATEGORIES).map(c => {
+                                const key = KEYS[c];
+                                const label = LABELS[c];
+                                const value = (mapping[focused] != null) ? mapping[focused][key].size : 0;
+                                return `${label}: ${value}`;
+                            }).join("<br/>");
+                            tooltip.html(`${d.properties.ntaname}<br/>${tooltip_data}`)
+                                .style("left", (event.pageX + 25) + "px")
                                 .style("top", (event.pageY - 28) + "px")
                                 .style("opacity", 1);
                             update();
                         })
                         .on("mouseout", (_, d) => {
-                            selected = null;
+                            focused = null;
                             tooltip.html("")
                                 .style("left", "0px")
                                 .style("top", "0px")
                                 .style("opacity", 0);
                             update();
                         })
-
                     );
             }
             update();
@@ -203,8 +268,7 @@
             data.forEach(d => {
                 Object.values(KEYS).forEach(k => {
                     d[k] = new Set(d[k]);
-                })
-                d.services.delete("S");
+                });
                 mapping[d.name] = d;
             });
 
