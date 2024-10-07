@@ -1,5 +1,5 @@
 # nyc-subway-vis
-EDA + visualization of subway access/redundancy across neighborhoods in NYC.
+Data exploration/visualization of subway connectivity across neighborhoods in NYC.
 
 Analysis is done at the level of Neighborhood Tabulation Area (NTA). 
 
